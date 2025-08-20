@@ -58,8 +58,8 @@ struct GlobalFlags {
 fn main() {
     let args = Cli::parse();
 
-    // set verbosity level
-    let level = match (atty::is(Stream::Stdout), args.global_flags.verbose) {
+    let is_being_piped = !atty::is(Stream::Stdout);
+    let level = match (is_being_piped, args.global_flags.verbose) {
         (true, _) => LevelFilter::Off,
         (_, false) => LevelFilter::Warn,
         (_, true) => LevelFilter::Info
