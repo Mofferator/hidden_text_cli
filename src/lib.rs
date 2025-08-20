@@ -4,7 +4,7 @@ use std::{num::ParseIntError};
 const ZWNJ: char = '\u{200c}';
 const INVSEP: char = '\u{2063}';
 
-pub fn encode_hidden(text: String) -> Option<String> {
+pub fn encode_hidden(text: String, low_char: Option<char>, high_char: Option<char>) -> Option<String> {
     if text.is_empty() {
         return None
     }
@@ -17,27 +17,27 @@ pub fn encode_hidden(text: String) -> Option<String> {
         .join("");
     for c in binary.chars() {
         match c {
-            '0' => output.push(ZWNJ),
-            '1' => output.push(INVSEP),
+            '0' => output.push(low_char.unwrap_or(ZWNJ)),
+            '1' => output.push(high_char.unwrap_or(INVSEP)),
             _ => {}
         }
     }
     Some(output)
 }
 
-pub fn decode_hidden(text: String) -> Result<Option<String>, DecodeError> {
+pub fn decode_hidden(text: String, low_char: Option<char>, high_char: Option<char>) -> Result<Option<String>, DecodeError> {
     let mut hidden_chars = String::new();
     for c in text.chars() {
         match c {
-            ZWNJ => hidden_chars.push('0'),
-            INVSEP => hidden_chars.push('1'),
+            _ if c == low_char.unwrap_or(ZWNJ) => hidden_chars.push('0'),
+            _ if c == high_char.unwrap_or(INVSEP) => hidden_chars.push('1'),
             _ => {}
         }
     };
     if hidden_chars.len() % 8 != 0 {
-        return Err(DecodeError { kind: DecodeErrorKind::IncorrectLength(hidden_chars.len()) })
+        Err(DecodeError { kind: DecodeErrorKind::IncorrectLength(hidden_chars.len()) })
     } else if hidden_chars.is_empty() {
-        return Ok(None)
+        Ok(None)
     } else {
         let u8s: Vec<Result<u8, ParseIntError>> = (0..hidden_chars.len())
             .step_by(8)
@@ -89,14 +89,14 @@ mod tests {
     fn decode() {
         // input strings are generated using https://www.promptfoo.dev/blog/invisible-unicode-threats/
         let input = String::from("This is visible​‌⁣⁣⁣‌⁣‌‌‌⁣⁣‌⁣‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣⁣‌‌⁣⁣‌‌⁣‌‌‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣⁣‌‌⁣⁣‌‌⁣‌‌‌‌‌‌⁣⁣‌⁣‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣‌‌⁣‌‌‌⁣⁣‌‌⁣‌‌‌⁣⁣‌‌⁣‌⁣‌⁣⁣‌⁣⁣⁣‌‍"); //  this contains the text "this is hidden"
-        let result = decode_hidden(input);
+        let result = decode_hidden(input, None, None);
         assert!(matches!(result, Ok(Some(text)) if text == "this is hidden"));
     }
 
     #[test]
     fn decode_empty() {
         let input = String::from("Totally normal message with no hidden text");
-        let result = decode_hidden(input);
+        let result = decode_hidden(input, None, None);
         assert!(matches!(result, Ok(None)));
     }
 
@@ -105,22 +105,36 @@ mod tests {
         // this is the same text as before but with three characters removed
         // a 14 char input string ("this is hidden") would need 112 hidden chars, but this string has 109
         let malformed_input = String::from("This is visible​‌⁣⁣⁣‌⁣‌‌‌⁣⁣‌⁣‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣⁣‌‌⁣⁣‌‌⁣‌‌‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣⁣‌‌⁣⁣‌‌⁣‌‌‌‌‌‌⁣⁣‌⁣‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣‌‌⁣‌‌‌⁣⁣‌‌⁣‌‌‌⁣⁣‌‌⁣‌⁣‌⁣⁣⁣‌‍"); 
-        let result = decode_hidden(malformed_input);
+        let result = decode_hidden(malformed_input, None, None);
         assert!(matches!(result, Err(DecodeError { kind: DecodeErrorKind::IncorrectLength(109) })));
+    }
+
+    #[test]
+    fn decode_custom_chars() {
+        let input = String::from("01100001");
+        let result = decode_hidden(input, Some('0'), Some('1'));
+        assert!(matches!(result, Ok(Some(text)) if text == "a"));
     }
 
     #[test]
     fn encode() {
         let input = String::from("this is hidden");
-        let result = encode_hidden(input);
+        let result = encode_hidden(input, None, None);
         assert!(matches!(result, Some(text) if text == "‌⁣⁣⁣‌⁣‌‌‌⁣⁣‌⁣‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣⁣‌‌⁣⁣‌‌⁣‌‌‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣⁣‌‌⁣⁣‌‌⁣‌‌‌‌‌‌⁣⁣‌⁣‌‌‌‌⁣⁣‌⁣‌‌⁣‌⁣⁣‌‌⁣‌‌‌⁣⁣‌‌⁣‌‌‌⁣⁣‌‌⁣‌⁣‌⁣⁣‌⁣⁣⁣‌")); // result generated from https://www.promptfoo.dev/blog/invisible-unicode-threats/
     }
 
     #[test]
     fn encode_empty() {
         let input = String::from("");
-        let result = encode_hidden(input);
+        let result = encode_hidden(input, None, None);
         assert!(matches!(result, None));
+    }
+
+    #[test]
+    fn encode_custom_chars() {
+        let input = String::from("a");
+        let result = encode_hidden(input, Some('0'), Some('1'));
+        assert!(matches!(result, Some(text) if text == "01100001"));
     }
 }
 
