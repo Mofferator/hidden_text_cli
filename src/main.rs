@@ -1,6 +1,6 @@
 use std::{fs, io::{self, Read}, path::PathBuf, str::FromStr};
 use clap::{Parser, Subcommand};
-use hidden_text::{encode_hidden, decode_hidden};
+use hide::{encode_hidden, decode_hidden};
 use log::LevelFilter;
 use atty::Stream;
 use std::process;
