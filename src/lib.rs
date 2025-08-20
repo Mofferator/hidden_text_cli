@@ -1,8 +1,8 @@
 use std::{num::ParseIntError};
 
 
-const ZWNJ: char = '\u{200c}';
-const INVSEP: char = '\u{2063}';
+const DEFAULT_LOW_CHAR: char = '\u{200c}'; // ZWNJ
+const DEFAULT_HIGH_CHAR: char = '\u{2063}'; // INVSEP
 
 pub fn encode_hidden(text: String, low_char: Option<char>, high_char: Option<char>) -> Option<String> {
     if text.is_empty() {
@@ -17,8 +17,8 @@ pub fn encode_hidden(text: String, low_char: Option<char>, high_char: Option<cha
         .join("");
     for c in binary.chars() {
         match c {
-            '0' => output.push(low_char.unwrap_or(ZWNJ)),
-            '1' => output.push(high_char.unwrap_or(INVSEP)),
+            '0' => output.push(low_char.unwrap_or(DEFAULT_LOW_CHAR)),
+            '1' => output.push(high_char.unwrap_or(DEFAULT_HIGH_CHAR)),
             _ => {}
         }
     }
@@ -29,8 +29,8 @@ pub fn decode_hidden(text: String, low_char: Option<char>, high_char: Option<cha
     let mut hidden_chars = String::new();
     for c in text.chars() {
         match c {
-            _ if c == low_char.unwrap_or(ZWNJ) => hidden_chars.push('0'),
-            _ if c == high_char.unwrap_or(INVSEP) => hidden_chars.push('1'),
+            _ if c == low_char.unwrap_or(DEFAULT_LOW_CHAR) => hidden_chars.push('0'),
+            _ if c == high_char.unwrap_or(DEFAULT_HIGH_CHAR) => hidden_chars.push('1'),
             _ => {}
         }
     };
