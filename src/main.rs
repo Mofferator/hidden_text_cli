@@ -1,8 +1,9 @@
-use std::{fs, path::PathBuf, str::FromStr};
+use std::{fs, io::{self, Read}, path::PathBuf, str::FromStr};
 use clap::{Parser, Subcommand};
 use hidden_text::{encode_hidden, decode_hidden};
 use log::LevelFilter;
 use atty::Stream;
+use std::process;
 
 #[derive(Parser, Debug)]
 #[command(name = "hidden", version, about = "Decodes/Encodes text into zero width characters")]
@@ -27,24 +28,24 @@ enum Commands {
         #[arg(short = 'c', long = "copy")]
         copy: bool,
 
-        #[arg(short = 'l', long = "low")]
+        #[arg(short = 'L', long = "low")]
         low_char: Option<char>,
 
-        #[arg(short = 'h', long = "high")]
+        #[arg(short = 'H', long = "high")]
         high_char: Option<char>,
 
-        text: String
+        text: Option<String>
     },
 
     #[command(about = "Extract and decode hidden text from a string")]
     Decode {
-        text: String,
-
-        #[arg(short = 'l', long = "low")]
+        #[arg(short = 'L', long = "low")]
         low_char: Option<char>,
 
-        #[arg(short = 'h', long = "high")]
+        #[arg(short = 'H', long = "high")]
         high_char: Option<char>,
+
+        text: Option<String>
     }
 }
 
@@ -54,6 +55,17 @@ struct GlobalFlags {
     verbose: bool
 }
 
+fn get_text_or_stdin(text: Option<String>) -> io::Result<String> {
+    match text {
+        Some(s) => Ok(s),
+        None => {
+            let mut buffer = String::new();
+            io::stdin()
+                .read_to_string(&mut buffer)?;
+            Ok(buffer)
+        }
+    }
+}
 
 fn main() {
     let args = Cli::parse();
@@ -76,11 +88,18 @@ fn main() {
                             plain_text, 
                             low_char, 
                             high_char } => {
-            let mut encoded_text = match encode_hidden(text, low_char, high_char) {
+            let input_text = match get_text_or_stdin(text) {
+                Ok(text) => text,
+                Err(err) => {
+                    log::warn!("Error reading from stdin: {err}");
+                    process::exit(1);
+                }
+            };
+            let mut encoded_text = match encode_hidden(input_text, low_char, high_char) {
                 Some(text) => text,
                 None => {
                     log::warn!("No text provided");
-                    return;
+                    process::exit(1);
                 }
             };
             if let Some(plain) = plain_text {
@@ -91,10 +110,10 @@ fn main() {
                     Ok(path) => path,
                     Err(_) => {
                         log::warn!("Invalid path");
-                        return
+                        process::exit(1);
                     }
                 };
-                match fs::write(&path, encoded_text) {
+                match fs::write(&path, &encoded_text) {
                     Ok(_) => {log::info!("Wrote encoded string to {}", path.to_str().unwrap_or(""))},
                     Err(err) => {log::warn!("Failed to write file to {}\nError: {err}", path.to_str().unwrap_or(""))}
                 }
@@ -102,9 +121,17 @@ fn main() {
             if copy {
                 println!("This is where we would copy");
             }
+            println!("{encoded_text}")
         },
         Commands::Decode { text, low_char, high_char } => {
-            match decode_hidden(text, low_char, high_char) {
+            let input_text = match get_text_or_stdin(text) {
+                Ok(text) => text,
+                Err(err) => {
+                    log::warn!("Error reading from stdin: {err}");
+                    process::exit(1);
+                }
+            };
+            match decode_hidden(input_text, low_char, high_char) {
                 Ok(Some(text)) => println!("{text}"),
                 Ok(None) => log::warn!("No hidden text found"),
                 Err(err) => log::warn!("Error decoding hidden text: {err}")
