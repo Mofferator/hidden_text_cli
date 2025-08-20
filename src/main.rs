@@ -1,7 +1,6 @@
 use std::{fs, path::PathBuf, str::FromStr};
 use clap::{Parser, Subcommand};
 use hidden_text::{encode_hidden, decode_hidden};
-use env_logger;
 use log::LevelFilter;
 use atty::Stream;
 
@@ -108,9 +107,8 @@ fn main() {
             match decode_hidden(text, low_char, high_char) {
                 Ok(Some(text)) => println!("{text}"),
                 Ok(None) => log::warn!("No hidden text found"),
-                Err(err) => log::warn!("Error decoding hidden text: {}", err)
+                Err(err) => log::warn!("Error decoding hidden text: {err}")
             };
         }
     }   
-    
 }

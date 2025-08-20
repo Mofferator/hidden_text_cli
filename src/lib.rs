@@ -35,9 +35,9 @@ pub fn decode_hidden(text: String, low_char: Option<char>, high_char: Option<cha
         }
     };
     if hidden_chars.len() % 8 != 0 {
-        return Err(DecodeError { kind: DecodeErrorKind::IncorrectLength(hidden_chars.len()) })
+        Err(DecodeError { kind: DecodeErrorKind::IncorrectLength(hidden_chars.len()) })
     } else if hidden_chars.is_empty() {
-        return Ok(None)
+        Ok(None)
     } else {
         let u8s: Vec<Result<u8, ParseIntError>> = (0..hidden_chars.len())
             .step_by(8)
