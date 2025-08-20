@@ -19,32 +19,34 @@ struct Cli {
 enum Commands {
     #[command(about = "Encode a string into hidden text")]
     Encode {
-        #[arg(short = 'o', long = "output")]
+        #[arg(short = 'o', long = "output", help = "Output file to save to")]
         output: Option<String>,
 
-        #[arg(short = 'p', long = "plain-text")]
+        #[arg(short = 'p', long = "plain-text", help = "Include some visible text to append after the hidden text")]
         plain_text: Option<String>,
 
-        #[arg(short = 'c', long = "copy")]
+        #[arg(short = 'c', long = "copy", help = "Copy the result to the clipboard (WIP)")]
         copy: bool,
 
-        #[arg(short = 'L', long = "low")]
+        #[arg(short = 'L', long = "low", help = "Set a custom character to use as the low bit")]
         low_char: Option<char>,
 
-        #[arg(short = 'H', long = "high")]
+        #[arg(short = 'H', long = "high", help = "Set a custom character to use as the high bit")]
         high_char: Option<char>,
 
+        #[arg(help = "Text to encode")]
         text: Option<String>
     },
 
     #[command(about = "Extract and decode hidden text from a string")]
     Decode {
-        #[arg(short = 'L', long = "low")]
+        #[arg(short = 'L', long = "low", help = "The character to decode as the low bit")]
         low_char: Option<char>,
 
-        #[arg(short = 'H', long = "high")]
+        #[arg(short = 'H', long = "high", help = "The character to decode as the high bit")]
         high_char: Option<char>,
 
+        #[arg(help = "Text to decode")]
         text: Option<String>
     }
 }
