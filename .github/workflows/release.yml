@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 name: Release
-=======
-name: Release Binaries
->>>>>>> parent of bedaa0b (Added perms for release binary workflow)
 
 on:
   push:
