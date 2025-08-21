@@ -26,7 +26,7 @@ enum Commands {
         #[arg(short = 'p', long = "plain-text", help = "Include some visible text to append after the hidden text")]
         plain_text: Option<String>,
 
-        #[arg(short = 'c', long = "copy", help = "Copy the result to the clipboard (WIP)")]
+        #[arg(short = 'c', long = "copy", help = "Copy the result to the clipboard")]
         copy: bool,
 
         #[arg(short = 'L', long = "low", help = "Set a custom character to use as the low bit")]
@@ -41,6 +41,9 @@ enum Commands {
 
     #[command(about = "Extract and decode hidden text from a string")]
     Decode {
+        #[arg(short = 'c', long = "copy", help = "Copy the result to the clipboard")]
+        copy: bool,
+
         #[arg(short = 'L', long = "low", help = "The character to decode as the low bit")]
         low_char: Option<char>,
 
@@ -94,12 +97,12 @@ fn add_plain_text(encoded_string: String, plain_text: &Option<String>) -> String
     }
 }
 
-fn copy_to_clipboard(encoded_string: &String, copy: &bool) {
+fn copy_to_clipboard(string: &String, copy: &bool) {
     if !copy {
         return;
     }
     let mut ctx = ClipboardContext::new().unwrap();
-    match ctx.set_contents(encoded_string.to_owned()) {
+    match ctx.set_contents(string.to_owned()) {
         Ok(_) => log::info!("Copied string to clipboard"),
         Err(_) => log::warn!("Could not copy string to clipboard")
     }
@@ -109,14 +112,14 @@ fn main() {
     let args = Cli::parse();
 
     let is_being_piped = !atty::is(Stream::Stdout);
-    let level = match (is_being_piped, args.global_flags.verbose) {
+    let log_level = match (is_being_piped, args.global_flags.verbose) {
         (true, _) => LevelFilter::Off,
         (_, false) => LevelFilter::Warn,
         (_, true) => LevelFilter::Info
     };
     env_logger::builder()
         .format_timestamp(None)
-        .filter_level(level)
+        .filter_level(log_level)
         .init();
 
     match args.command {
@@ -149,7 +152,7 @@ fn main() {
 
             println!("{encoded_text}")
         },
-        Commands::Decode { text, low_char, high_char } => {
+        Commands::Decode { text, low_char, high_char, copy } => {
             let input_text = match get_text_or_stdin(text) {
                 Ok(text) => text,
                 Err(err) => {
@@ -157,11 +160,21 @@ fn main() {
                     process::exit(1);
                 }
             };
-            match decode_hidden(input_text, low_char, high_char) {
-                Ok(Some(text)) => println!("{text}"),
-                Ok(None) => log::warn!("No hidden text found"),
-                Err(err) => log::warn!("Error decoding hidden text: {err}")
+            let decoded_text = match decode_hidden(input_text, low_char, high_char) {
+                Ok(Some(text)) => text,
+                Ok(None) => {
+                    log::warn!("No hidden text found"); 
+                    process::exit(1);
+                }
+                Err(err) => {
+                    log::warn!("Error decoding hidden text: {err}");
+                    process::exit(1);
+                }
             };
+
+            copy_to_clipboard(&decoded_text, &copy);
+
+            println!("{decoded_text}")
         }
     }   
 }

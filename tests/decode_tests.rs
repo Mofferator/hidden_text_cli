@@ -22,3 +22,17 @@ fn test_decode_custom_chars() {
         .stdout(predicate::eq("a\n"))
         .code(0);
 }
+
+#[test]
+fn test_decode_copy_doesnt_error() {
+    Command::cargo_bin("hide").unwrap()
+        .arg("decode")
+        .arg("-c")
+        .arg("-L").arg("0")
+        .arg("-H").arg("1")
+        .arg("01100001")
+        .assert()
+        .code(0);
+    // not sure how to test for actual clipboard content automatically
+    // so testing that the exit code is zero will have to do
+}
