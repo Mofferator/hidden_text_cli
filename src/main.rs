@@ -4,6 +4,7 @@ use hide::{encode_hidden, decode_hidden};
 use log::LevelFilter;
 use atty::Stream;
 use std::process;
+use cli_clipboard::{ClipboardContext, ClipboardProvider};
 
 #[derive(Parser, Debug)]
 #[command(name = "hidden", version, about = "Decodes/Encodes text into zero width characters")]
@@ -69,6 +70,41 @@ fn get_text_or_stdin(text: Option<String>) -> io::Result<String> {
     }
 }
 
+fn save_file(output: &Option<String>, encoded: &String) -> () {
+    if let Some(output) = output {
+        let path:PathBuf = match PathBuf::from_str(output.as_str()) {
+            Ok(path) => path,
+            Err(_) => {
+                log::warn!("Invalid path");
+                process::exit(1);
+            }
+        };
+        match fs::write(&path, &encoded) {
+            Ok(_) => {log::info!("Wrote encoded string to {}", path.to_str().unwrap_or(""))},
+            Err(err) => {log::warn!("Failed to write file to {}\nError: {err}", path.to_str().unwrap_or(""))}
+        }
+    }
+}
+
+fn add_plain_text(encoded_string: String, plain_text: &Option<String>) -> String {
+    if let Some(plain) = plain_text {
+        encoded_string + plain.as_str()
+    } else {
+        encoded_string
+    }
+}
+
+fn copy_to_clipboard(encoded_string: &String, copy: &bool) {
+    if !copy {
+        return;
+    }
+    let mut ctx = ClipboardContext::new().unwrap();
+    match ctx.set_contents(encoded_string.to_owned()) {
+        Ok(_) => log::info!("Copied string to clipboard"),
+        Err(_) => log::warn!("Could not copy string to clipboard")
+    }
+}
+
 fn main() {
     let args = Cli::parse();
 
@@ -97,32 +133,20 @@ fn main() {
                     process::exit(1);
                 }
             };
-            let mut encoded_text = match encode_hidden(input_text, low_char, high_char) {
+            let encoded_text = match encode_hidden(input_text, low_char, high_char) {
                 Some(text) => text,
                 None => {
                     log::warn!("No text provided");
                     process::exit(1);
                 }
             };
-            if let Some(plain) = plain_text {
-                encoded_text += plain.as_str();
-            }
-            if let Some(output) = output {
-                let path:PathBuf = match PathBuf::from_str(output.as_str()) {
-                    Ok(path) => path,
-                    Err(_) => {
-                        log::warn!("Invalid path");
-                        process::exit(1);
-                    }
-                };
-                match fs::write(&path, &encoded_text) {
-                    Ok(_) => {log::info!("Wrote encoded string to {}", path.to_str().unwrap_or(""))},
-                    Err(err) => {log::warn!("Failed to write file to {}\nError: {err}", path.to_str().unwrap_or(""))}
-                }
-            }
-            if copy {
-                println!("This is where we would copy");
-            }
+
+            let encoded_text = add_plain_text(encoded_text, &plain_text);
+
+            save_file(&output, &encoded_text);
+
+            copy_to_clipboard(&encoded_text, &copy);
+
             println!("{encoded_text}")
         },
         Commands::Decode { text, low_char, high_char } => {
