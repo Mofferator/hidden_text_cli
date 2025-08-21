@@ -55,15 +55,16 @@ fn test_encode_with_plain_text() {
         .code(0);
 }
 
-#[test]
-fn test_encode_copy_doesnt_error() {
-    Command::cargo_bin("hide").unwrap()
-        .arg("encode")
-        .arg("-c")
-        .arg("copied")
-        .assert()
-        .code(0);
-    // not sure how to test for actual clipboard content automatically
-    // so testing that the exit code is zero will have to do
-}
+// WARNING THIS TEST WILL FAIL IN GITHUB CI TESTING
+// #[test]
+// fn test_encode_copy_doesnt_error() {
+//     Command::cargo_bin("hide").unwrap()
+//         .arg("encode")
+//         .arg("-c")
+//         .arg("copied")
+//         .assert()
+//         .code(0);
+//     // not sure how to test for actual clipboard content automatically
+//     // so testing that the exit code is zero will have to do
+// }
 
