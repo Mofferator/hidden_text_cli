@@ -3,10 +3,10 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'   # Runs when you push a version tag, e.g. v1.0.0
+      - 'v*'
 
 permissions:
-  contents: write   # needed so we can create releases and upload binaries
+  contents: write
 
 jobs:
   build:

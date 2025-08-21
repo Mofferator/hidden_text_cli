@@ -108,6 +108,59 @@ fn copy_to_clipboard(string: &String, copy: &bool) {
     }
 }
 
+fn encode_sub_command(output: Option<String>, plain_text: Option<String>,
+                        copy: bool, low_char: Option<char>,
+                        high_char: Option<char>, text: Option<String>) {
+    let input_text = match get_text_or_stdin(text) {
+            Ok(text) => text,
+            Err(err) => {
+                log::warn!("Error reading from stdin: {err}");
+                process::exit(1);
+            }
+        };
+        let encoded_text = match encode_hidden(input_text, low_char, high_char) {
+            Some(text) => text,
+            None => {
+                log::warn!("No text provided");
+                process::exit(1);
+            }
+        };
+
+        let encoded_text = add_plain_text(encoded_text, &plain_text);
+
+        save_file(&output, &encoded_text);
+
+        copy_to_clipboard(&encoded_text, &copy);
+
+        println!("{encoded_text}")
+}
+
+fn decode_sub_command(copy: bool, low_char: Option<char>,
+                        high_char: Option<char>, text: Option<String>) {
+    let input_text = match get_text_or_stdin(text) {
+        Ok(text) => text,
+        Err(err) => {
+            log::warn!("Error reading from stdin: {err}");
+            process::exit(1);
+        }
+    };
+    let decoded_text = match decode_hidden(input_text, low_char, high_char) {
+        Ok(Some(text)) => text,
+        Ok(None) => {
+            log::warn!("No hidden text found"); 
+            process::exit(1);
+        }
+        Err(err) => {
+            log::warn!("Error decoding hidden text: {err}");
+            process::exit(1);
+        }
+    };
+
+    copy_to_clipboard(&decoded_text, &copy);
+
+    println!("{decoded_text}")
+}
+
 fn main() {
     let args = Cli::parse();
 
@@ -129,52 +182,13 @@ fn main() {
                             plain_text, 
                             low_char, 
                             high_char } => {
-            let input_text = match get_text_or_stdin(text) {
-                Ok(text) => text,
-                Err(err) => {
-                    log::warn!("Error reading from stdin: {err}");
-                    process::exit(1);
-                }
-            };
-            let encoded_text = match encode_hidden(input_text, low_char, high_char) {
-                Some(text) => text,
-                None => {
-                    log::warn!("No text provided");
-                    process::exit(1);
-                }
-            };
-
-            let encoded_text = add_plain_text(encoded_text, &plain_text);
-
-            save_file(&output, &encoded_text);
-
-            copy_to_clipboard(&encoded_text, &copy);
-
-            println!("{encoded_text}")
+            encode_sub_command(output, plain_text, copy, low_char, high_char, text);
         },
-        Commands::Decode { text, low_char, high_char, copy } => {
-            let input_text = match get_text_or_stdin(text) {
-                Ok(text) => text,
-                Err(err) => {
-                    log::warn!("Error reading from stdin: {err}");
-                    process::exit(1);
-                }
-            };
-            let decoded_text = match decode_hidden(input_text, low_char, high_char) {
-                Ok(Some(text)) => text,
-                Ok(None) => {
-                    log::warn!("No hidden text found"); 
-                    process::exit(1);
-                }
-                Err(err) => {
-                    log::warn!("Error decoding hidden text: {err}");
-                    process::exit(1);
-                }
-            };
-
-            copy_to_clipboard(&decoded_text, &copy);
-
-            println!("{decoded_text}")
+        Commands::Decode { text, 
+                            low_char, 
+                            high_char, 
+                            copy } => {
+            decode_sub_command(copy, low_char, high_char, text);
         }
     }   
 }
